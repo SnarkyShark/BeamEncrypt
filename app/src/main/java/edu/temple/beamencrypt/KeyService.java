@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Base64;
+import android.util.Log;
 
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -32,11 +33,13 @@ public class KeyService extends Service {
         }
     }
 
-    public KeyService() {
-    }
+    /*public KeyService() {
+    }*/
 
     @Override
     public IBinder onBind(Intent intent) {
+        Log.e(" keytrack", "we bound once");
+
         storedKeys = new HashMap<String, String>();
 
         return mBinder;
@@ -52,9 +55,15 @@ public class KeyService extends Service {
             kp = kpg.generateKeyPair();
             storedPublicKey = kp.getPublic();
             storedPrivateKey = kp.getPrivate();
+            Log.e(" keytrack", "made public key: " + storedPublicKey);
+            Log.e(" keytrack", "made private key: " + storedPublicKey);
+
         }
-        else
+        else {
             kp = new KeyPair(storedPublicKey, storedPrivateKey);
+            Log.e(" keytrack", "changed public key: " + storedPublicKey);
+            Log.e(" keytrack", "changed private key: " + storedPublicKey);
+        }
 
         return kp;
     }

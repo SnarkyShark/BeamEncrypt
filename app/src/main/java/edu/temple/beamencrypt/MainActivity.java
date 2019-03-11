@@ -9,6 +9,7 @@ import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -50,7 +51,10 @@ public class MainActivity extends AppCompatActivity {
         getKeysButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Log.e(" keytrack", "get keys button");
                 if(mBound) {
+                    Log.e(" keytrack", "service bound");
+
                     try {
                         mService.getMyKeyPair();
                         privateText.setText(mService.getMyKeyPair().getPrivate().toString());
@@ -60,6 +64,9 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                 }
+                else
+                    Log.e(" keytrack", "service not bound");
+
             }
         });
 
@@ -117,6 +124,8 @@ public class MainActivity extends AppCompatActivity {
 
         Intent intent = new Intent(this, KeyService.class);
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+        Log.e(" keytrack", "we tried to bind");
+
     }
 
     @Override
@@ -136,6 +145,7 @@ public class MainActivity extends AppCompatActivity {
             KeyService.LocalBinder binder = (KeyService.LocalBinder) service;
             mService = binder.getService();
             mBound = true;
+            Log.e(" keytrack", "connected to the service");
         }
 
         @Override
