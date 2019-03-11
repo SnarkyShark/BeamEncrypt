@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Binder;
 import android.os.IBinder;
+import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Base64;
@@ -26,94 +27,49 @@ public class MainActivity extends AppCompatActivity {
 
     KeyService mService;
     boolean mBound = false;
-    boolean finishedEncrypt = false;
-    Button getKeysButton, encryptButton, decryptButton;
-    EditText messageText;
-    TextView encryptResult, decryptResult, privateText, publicText;
-    byte [] encryptedBytes, decryptedBytes;
-    String encrypted, decrypted;
+    boolean textmode = false;
+    Button keymodeButton, textmodeButton;
+
+    FragmentManager fm;
+    KeyFragment keyFragment;
+    TextFragment textFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        final View mainView = findViewById(R.id.mainLayout);
 
-        getKeysButton = findViewById(R.id.button);
-        encryptButton = findViewById(R.id.encryptButton);
-        decryptButton = findViewById(R.id.decryptButton);
-        messageText = findViewById(R.id.encryptMessageEditText);
-        encryptResult = findViewById(R.id.encryptedMessageText);
-        decryptResult = findViewById(R.id.decryptedMessageText);
-        privateText = findViewById(R.id.privateKeyText);
-        publicText = findViewById(R.id.pubicKeyText);
+        keymodeButton = findViewById(R.id.keymodeButton);
+        textmodeButton = findViewById(R.id.textmodeButton);
 
+        fm = getSupportFragmentManager();
+        keyFragment = new KeyFragment();
+        textFragment = new TextFragment();
 
-        getKeysButton.setOnClickListener(new View.OnClickListener() {
+        fm.beginTransaction()
+                .replace(R.id.container, keyFragment)
+                .commit();
+
+        keymodeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.e(" keytrack", "get keys button");
-                if(mBound) {
-                    Log.e(" keytrack", "service bound");
-
-                    try {
-                        mService.getMyKeyPair();
-                        privateText.setText(mService.getMyKeyPair().getPrivate().toString());
-                        publicText.setText(mService.getMyKeyPair().getPublic().toString());
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-
-                }
-                else
-                    Log.e(" keytrack", "service not bound");
-
+                textmode = false;
+                mainView.setBackgroundColor(getColor(R.color.key_background));
+                fm.beginTransaction()
+                        .replace(R.id.container, keyFragment)
+                        .commit();
             }
         });
 
-        encryptButton.setOnClickListener(new View.OnClickListener() {
+        textmodeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // encrypt the text and print on screen
-                String message = messageText.getText().toString();
-                if(mBound && message.compareTo("") != 0) {
-
-                    try {
-                        PrivateKey privateKey = mService.getMyKeyPair().getPrivate();
-                        Cipher cipher = Cipher.getInstance("RSA");
-                        cipher.init(Cipher.ENCRYPT_MODE, privateKey);
-                        encryptedBytes = cipher.doFinal(message.getBytes());
-                        encrypted = Base64.encodeToString(encryptedBytes, Base64.DEFAULT);
-                        //encrypted = new String(encryptedBytes);
-                        encryptResult.setText(encrypted);
-                        finishedEncrypt = true;
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-                else
-                    Toast.makeText(MainActivity.this, "we have a problem", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        decryptButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // decrypt the text and print on screen
-                if(mBound && finishedEncrypt) {
-
-                    try {
-                        PublicKey publicKey = mService.getMyKeyPair().getPublic();
-                        Cipher cipher = Cipher.getInstance("RSA");
-                        cipher.init(Cipher.DECRYPT_MODE, publicKey);
-                        decryptedBytes = cipher.doFinal(encryptedBytes);
-                        decrypted = new String(decryptedBytes);
-                        decryptResult.setText(decrypted);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-                else
-                    Toast.makeText(MainActivity.this, "we have a problem", Toast.LENGTH_SHORT).show();
+                textmode = true;
+                mainView.setBackgroundColor(getColor(R.color.text_background));
+                fm.beginTransaction()
+                        .replace(R.id.container, textFragment)
+                        .commit();
             }
         });
     }
