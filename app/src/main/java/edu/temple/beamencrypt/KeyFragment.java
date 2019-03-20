@@ -22,6 +22,7 @@ import org.w3c.dom.Text;
  */
 public class KeyFragment extends Fragment {
 
+    // Basic elements
     EditText usernameEditText;
     Button setUsernameButton;
     TextView usernameTextView;
@@ -70,7 +71,7 @@ public class KeyFragment extends Fragment {
     // sets username & generates public/private key pair
     private void setUsername(String inputUsername) {
         username = inputUsername;
-        parent.setUsername(username);
+        parent.setUsername();
 
         usernameTextView.setText(username);
     }
@@ -81,7 +82,7 @@ public class KeyFragment extends Fragment {
     }
 
     interface KeyInterface {
-        public void setUsername(String inputUsername);
+        void setUsername();
     }
 
 }

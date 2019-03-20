@@ -21,6 +21,7 @@ import java.util.Map;
 
 public class KeyService extends Service {
 
+    KeyPair kp;
     PublicKey storedPublicKey;
     PrivateKey storedPrivateKey;
     Map <String, String> storedKeys;
@@ -45,27 +46,27 @@ public class KeyService extends Service {
         return mBinder;
     }
 
-    public KeyPair getMyKeyPair() throws NoSuchAlgorithmException {
+    public void genMyKeyPair() {
 
-        KeyPair kp;
+        try {
+            if (storedPublicKey == null || storedPrivateKey == null) {
+                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+                kpg.initialize(2048);
+                kp = kpg.generateKeyPair();
+                storedPublicKey = kp.getPublic();
+                storedPrivateKey = kp.getPrivate();
+                Log.e(" keytrack", "made public key: " + storedPublicKey);
+                Log.e(" keytrack", "made private key: " + storedPublicKey);
 
-        if(storedPublicKey == null || storedPrivateKey == null) {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-            kpg.initialize(2048);
-            kp = kpg.generateKeyPair();
-            storedPublicKey = kp.getPublic();
-            storedPrivateKey = kp.getPrivate();
-            Log.e(" keytrack", "made public key: " + storedPublicKey);
-            Log.e(" keytrack", "made private key: " + storedPublicKey);
-
+            } else {
+                kp = new KeyPair(storedPublicKey, storedPrivateKey);
+                Log.e(" keytrack", "changed public key: " + storedPublicKey);
+                Log.e(" keytrack", "changed private key: " + storedPublicKey);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        else {
-            kp = new KeyPair(storedPublicKey, storedPrivateKey);
-            Log.e(" keytrack", "changed public key: " + storedPublicKey);
-            Log.e(" keytrack", "changed private key: " + storedPublicKey);
-        }
 
-        return kp;
     }
 
     /**
