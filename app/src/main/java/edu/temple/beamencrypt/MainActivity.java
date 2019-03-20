@@ -25,19 +25,22 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
 
 import javax.crypto.Cipher;
 
 import static android.nfc.NdefRecord.createMime;
 
-public class MainActivity extends AppCompatActivity implements NfcAdapter.CreateNdefMessageCallback {
+public class MainActivity extends AppCompatActivity implements NfcAdapter.CreateNdefMessageCallback, KeyFragment.KeyInterface {
 
     KeyService mService;
     boolean mBound = false;
     boolean textmode = false;
     Button keymodeButton, textmodeButton;
+    private String username;
 
     FragmentManager fm;
     KeyFragment keyFragment;
@@ -54,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
 
         keymodeButton = findViewById(R.id.keymodeButton);
         textmodeButton = findViewById(R.id.textmodeButton);
+        textView = findViewById(R.id.testTextView);
 
         fm = getSupportFragmentManager();
         keyFragment = new KeyFragment();
@@ -62,6 +66,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
         fm.beginTransaction()
                 .replace(R.id.container, keyFragment)
                 .commit();
+
+        username = "default";
 
         keymodeButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -98,19 +104,31 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
 
     }
 
+    public void testValue(String test) {
+        textView.setText(test);
+    }
+
     /**
      * Android Beam Stuff
      */
 
     @Override
     public NdefMessage createNdefMessage(NfcEvent event) {
-        String payload = "";
+        String payload;
 
         if(textmode) {
             payload = "text mode!!";
         }
         else {
             payload = "key mode!!";
+            String pubKey = mService.getMyPublicKey();
+            if(pubKey.equals("")){
+                Log.d("SEND EMPTY KEY", "KEY WAS EMPTY!");
+            }
+            else{
+                payload = "{\"user\":\""+ username +"\",\"key\":\""+ pubKey +"\"}";
+                Log.d("SENT KEY PAYLOAD", payload);
+            }
         }
 
         /*switch(mMode){
@@ -168,13 +186,12 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
      * Parses the NDEF Message from the intent and prints to the TextView
      */
     void processIntent(Intent intent) {
-        textView = findViewById(R.id.textView);
         Parcelable[] rawMsgs = intent.getParcelableArrayExtra(
                 NfcAdapter.EXTRA_NDEF_MESSAGES);
         // only one message sent during the beam
         NdefMessage msg = (NdefMessage) rawMsgs[0];
         // record 0 contains the MIME type, record 1 is the AAR, if present
-        textView.setText(new String(msg.getRecords()[0].getPayload()));
+        //testValue(new String(msg.getRecords()[0].getPayload()));
     }
 
     /**
@@ -216,6 +233,13 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
             mBound = false;
         }
     };
+
+    // Fragment Communication
+
+    public void setUsername(String inputUsername) {
+        username = keyFragment.getUsername();
+        testValue(username);
+    }
 
 }
 

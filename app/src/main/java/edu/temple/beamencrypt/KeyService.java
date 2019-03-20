@@ -68,6 +68,22 @@ public class KeyService extends Service {
         return kp;
     }
 
+    /**
+     * Returns PEM-formatted public key
+     */
+    String getMyPublicKey(){
+        if(storedKeys != null){
+            PublicKey key = storedPublicKey;
+            byte[] keyBytes = key.getEncoded();
+
+            String encodedKey = Base64.encodeToString(keyBytes,Base64.DEFAULT);
+            String retVal = "-----BEGIN PUBLIC KEY-----\n"+encodedKey+"-----END PUBLIC KEY-----";
+            Log.d("Public Key Export", retVal);
+            return retVal;
+        }
+        return "";
+    }
+
     public void storePublicKey (String partnerName, String publicKey) {
         storedKeys.put(partnerName, publicKey);
     }
