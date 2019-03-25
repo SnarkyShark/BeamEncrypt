@@ -1,5 +1,6 @@
 package edu.temple.beamencrypt;
 
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -23,42 +24,43 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.File;
-import java.security.Key;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.spec.InvalidKeySpecException;
-
-import javax.crypto.Cipher;
-
-import static android.nfc.NdefRecord.createMime;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity implements NfcAdapter.CreateNdefMessageCallback, KeyFragment.KeyInterface {
 
-    KeyService mService;
-    boolean mBound = false;
-    boolean textmode = false;
+    // View elements
     Button keymodeButton, textmodeButton;
-    private String username;
+    TextView textView;
 
+    // Fragment Navigation
     FragmentManager fm;
     KeyFragment keyFragment;
     TextFragment textFragment;
+    boolean textmode = false;
+    private String username;
 
+    // Service
+    KeyService mService;
+    boolean mBound = false;
+
+    // NFC
     NfcAdapter nfcAdapter;
-    TextView textView;
+    private PendingIntent mPendingIntent;
+    private String payload;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // View Elements
         setContentView(R.layout.activity_main);
         final View mainView = findViewById(R.id.mainLayout);
-
         keymodeButton = findViewById(R.id.keymodeButton);
         textmodeButton = findViewById(R.id.textmodeButton);
         textView = findViewById(R.id.testTextView);
 
+        // Fragment Nav
         fm = getSupportFragmentManager();
         keyFragment = new KeyFragment();
         textFragment = new TextFragment();
@@ -91,15 +93,12 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
             }
         });
 
-        // Android Beam stuff
+        // Android Beam
+        Intent intent = new Intent(this, MainActivity.class);
+        mPendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
-        if (nfcAdapter == null) {
-            Toast.makeText(this, "NFC is not available", Toast.LENGTH_LONG).show();
-            finish();
-            return;
-        }
-        // Register callback
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this);
         nfcAdapter.setNdefPushMessageCallback(this, this);
 
     }
@@ -109,13 +108,11 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
     }
 
     /**
-     * Android Beam Stuff
+     * Android Beam
      */
 
     @Override
     public NdefMessage createNdefMessage(NfcEvent event) {
-        String payload;
-
         if(textmode) {
             payload = "text mode!!";
         }
@@ -131,36 +128,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
             }
         }
 
-        /*switch(mMode){
-            case MESSAGE_RECIEVE_MODE:
-                //Uh do nothing?
-                Log.d("RECIEVE NDEF WRITE", "User tried to send NDEF in recieve mode.");
-                break;
-
-            case MESSAGE_SEND_MODE:
-                //Send currently 'set' message
-                Log.d("SEND NDEF WRITE", "User tried to send NDEF in write mode.");
-                if(mMessage != null && mPartner != null){
-                    String encryptedMessage = mKeyService.encrypt(mMessage, mPartner);
-                    payload = "{\"to\":\"" + mPartner + "\",\"from\":\""+ username + "\",\"message\""+
-                            ":\""+ encryptedMessage +"\"}";
-                }
-
-                break;
-            case KEY_SEND_MODE:
-                //Send currently 'set' message
-                Log.d("KEY NDEF WRITE", "User tried to send NDEF in key mode.");
-                String pubKey = mKeyService.getMyPublicKey();
-                if(pubKey.equals("")){
-                    Log.d("SEND EMPTY KEY", "KEY WAS EMPTY!");
-                }
-                else{
-                    payload = "{\"user\":\""+ username +"\",\"key\":\""+ pubKey +"\"}";
-                    Log.d("SENT KEY PAYLOAD", payload);
-                }
-                break;
-        } */
-
         NdefRecord record = NdefRecord.createTextRecord(null, payload);
         NdefMessage msg = new NdefMessage(new NdefRecord[]{record});
 
@@ -170,28 +137,80 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
     @Override
     protected void onResume() {
         super.onResume();
-        // Check to see that the Activity started due to an Android Beam
+        Log.e( " beamtrack", "We resumed");
+
+        // Get the intent from Beam
         if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(getIntent().getAction())) {
+            Log.e( " beamtrack", "We discovered an NDEF");
             processIntent(getIntent());
         }
+        nfcAdapter.enableForegroundDispatch(this, mPendingIntent, null, null);
     }
 
     @Override
-    public void onNewIntent(Intent intent) {
-        // onResume gets called after this to handle the intent
-        setIntent(intent);
+    protected void onPause() {
+        super.onPause();
+
+        nfcAdapter.disableForegroundDispatch(this);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);  // look for new intents
     }
 
     /**
      * Parses the NDEF Message from the intent and prints to the TextView
      */
     void processIntent(Intent intent) {
-        Parcelable[] rawMsgs = intent.getParcelableArrayExtra(
-                NfcAdapter.EXTRA_NDEF_MESSAGES);
-        // only one message sent during the beam
-        NdefMessage msg = (NdefMessage) rawMsgs[0];
-        // record 0 contains the MIME type, record 1 is the AAR, if present
-        //testValue(new String(msg.getRecords()[0].getPayload()));
+        String payload = new String(
+                ((NdefMessage) intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)[0])
+                        .getRecords()[0]
+                        .getPayload());
+        Toast.makeText(this, "Recieved NFC tag", Toast.LENGTH_LONG).show();
+
+        //Lop off the 'en' language code.
+        String jsonString = payload.substring(3);
+        Log.d("Tag debug", jsonString);
+        if(jsonString.equals("")){
+            Log.d("Message Recieved?", "Message was empty!");
+        }
+        else {
+            //Determine which json payload we've got here.
+
+            try {
+                JSONObject json = new JSONObject(jsonString);
+                /*if(json.has("message")){
+                    manageMessageJSON(json);
+                }
+                else */ if (json.has("key")){
+                    Log.e(" beamtrack", "we know it's a key");
+                    manageKeyJson(json);
+                }
+                //else do nothing bc json is messed up.
+            } catch (JSONException e) {
+                Log.e("JSON Exception", "Convert problem", e);
+            }
+        }
+    }
+
+    private void manageKeyJson(JSONObject json){
+        try {
+            String owner = json.getString("user");
+            String pemKey = json.getString("key");
+            if(mBound)
+                mService.storePublicKey(owner, pemKey);/*else{
+                mStoreKeyWhenReady = true;
+                mTempOwner = owner;
+                mTempPemKey = pemKey;
+            } */
+            Toast.makeText(this, "User: " + owner, Toast.LENGTH_SHORT).show();
+        }
+        catch (JSONException e){
+            Log.e("JSON Exception", "Key Problem", e);
+        }
+
     }
 
     /**
@@ -236,9 +255,10 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Create
 
     // Fragment Communication
 
-    public void setUsername(String inputUsername) {
+    public void setUsername() {
         username = keyFragment.getUsername();
-        testValue(username);
+        mService.genMyKeyPair();
+        //testValue(username);
     }
 
 }
